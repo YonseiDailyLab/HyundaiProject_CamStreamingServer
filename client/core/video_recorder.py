@@ -72,9 +72,9 @@ class VideoRecorder:
             str: 생성된 디렉토리 경로
             
         Note:
-            디렉토리는 Data/<서버IP>/ 형식으로 생성됩니다.
+            디렉토리는 Data/cam/<서버IP>/ 형식으로 생성됩니다.
         """
-        recording_dir = os.path.join("Data", self.server_ip)
+        recording_dir = os.path.join("Data", "cam", self.server_ip)
         os.makedirs(recording_dir, exist_ok=True)
         return recording_dir
 
@@ -138,13 +138,10 @@ class VideoRecorder:
                                 break
                     
                     if current_filename:
-                        # 새 파일명 생성 (시작시간-종료시간.mp4)
-                        start_dt = datetime.fromtimestamp(self.start_time)
-                        end_dt = datetime.fromtimestamp(end_time)
-                        # 밀리초 계산
-                        start_ms = int((self.start_time % 1) * 1000)
-                        end_ms = int((end_time % 1) * 1000)
-                        new_filename = f"{start_dt.strftime('%Y%m%d_%H%M%S')}.{start_ms:03d}-{end_dt.strftime('%Y%m%d_%H%M%S')}.{end_ms:03d}.mp4"
+                        # 새 파일명 생성 (Unix 타임스탬프 형식, 밀리초 포함)
+                        start_ms = int(self.start_time * 1000)
+                        end_ms = int(end_time * 1000)
+                        new_filename = f"{start_ms}-{end_ms}.mp4"
                         old_path = os.path.join(recording_dir, current_filename)
                         new_path = os.path.join(recording_dir, new_filename)
                         

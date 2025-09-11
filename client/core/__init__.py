@@ -11,5 +11,6 @@ This package contains the main components:
 from .video_recorder import VideoRecorder
 from .stream_viewer import StreamViewer
 from .mqtt_listener import MQTTListener
+from .sensor_logger import SensorDataLogger
 
-__all__ = ['VideoRecorder', 'StreamViewer', 'MQTTListener']
+__all__ = ['VideoRecorder', 'StreamViewer', 'MQTTListener', 'SensorDataLogger']

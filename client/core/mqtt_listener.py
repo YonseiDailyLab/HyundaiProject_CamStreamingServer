@@ -1,6 +1,7 @@
 import logging
 import uuid
 import time
+import json
 import paho.mqtt.client as mqtt
 import multiprocessing
 import config as cfg
@@ -19,10 +20,11 @@ class MQTTListener:
         """MQTT 연결 콜백"""
         if rc == 0:
             logging.info("[MQTT] Broker connected")
-            # 서버 응답 토픽과 command 토픽 구독
+            # 서버 응답 토픽, command 토픽, 센서 토픽 구독
             topics = [
                 (self.response_topic, 0),
                 (cfg.MQTT_TOPIC_COMMAND, 0),
+                ("sensor/#", 0),  # 모든 센서 토픽 구독
             ]
             client.subscribe(topics)
             logging.info(f"[MQTT] Subscribed topics: {[topic for topic, _ in topics]}")
@@ -60,6 +62,14 @@ class MQTTListener:
             elif "camera/response" in topic and payload:  # 다른 클라이언트의 응답도 처리
                 logging.info(f"[MQTT] Additional server IP received: {payload}")
                 self.ip_queue.put(payload)
+            elif topic.startswith("sensor/"):  # 센서 데이터 처리
+                logging.debug(f"[MQTT] Sensor data received on topic {topic}")
+                try:
+                    # 센서 데이터 파싱 및 큐로 전달
+                    data = json.loads(payload)
+                    self.ip_queue.put(("sensor_data", (topic, data)))
+                except json.JSONDecodeError:
+                    logging.error(f"[MQTT] Invalid sensor data format: {payload}")
         except Exception as e:
             logging.error(f"[MQTT] Message processing error: {e}")
 

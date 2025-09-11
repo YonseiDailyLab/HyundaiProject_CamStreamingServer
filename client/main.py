@@ -1,9 +1,10 @@
 # client/main.py
 
 import logging
+import json
 import multiprocessing
 import config as cfg
-from client.core import MQTTListener, StreamViewer
+from client.core import MQTTListener, StreamViewer, SensorDataLogger
 
 def setup_logging(default_level=logging.INFO):
     """로깅 설정"""
@@ -26,6 +27,47 @@ def mqtt_listener_process(ip_queue: multiprocessing.Queue):
         ip_queue: IP 주소를 전달하는 큐
     """
     mqtt_listener = MQTTListener(ip_queue)
+    
+    # 센서 데이터 로거 초기화
+    sensor_logger = SensorDataLogger()
+    
+    # MQTT 콜백에서 센서 데이터도 처리하도록 수정
+    original_on_message = mqtt_listener.on_message
+    
+    def on_message_with_sensor(client, userdata, msg):
+        # 기존 메시지 처리
+        original_on_message(client, userdata, msg)
+        
+        try:
+            topic = msg.topic
+            payload = msg.payload.decode()
+            
+            # 센서 데이터 처리
+            if topic.startswith("sensor/"):
+                try:
+                    data = json.loads(payload)
+                    if 'id' in data:
+                        del data['id']
+                    sensor_logger.save_sensor_data(topic, data)
+                    logging.debug(f"[MQTT] Processed sensor data from {topic}")
+                except json.JSONDecodeError:
+                    logging.error(f"Invalid JSON payload from {topic}: {payload}")
+            # 녹화 명령 처리
+            elif topic == cfg.MQTT_TOPIC_COMMAND:
+                if payload in ("start", "recording_start"):
+                    logging.info(f"[MQTT] Starting sensor recording...")
+                    sensor_logger.start_recording()
+                elif payload in ("stop", "recording_stop"):
+                    logging.info(f"[MQTT] Stopping sensor recording...")
+                    sensor_logger.stop_recording()
+                    
+        except Exception as e:
+            logging.error(f"Error processing sensor message: {e}")
+    
+    # 수정된 콜백 설정
+    mqtt_listener.on_message = on_message_with_sensor
+    
+    # MQTT 리스너 시작
     mqtt_listener.start()
 
 def stream_viewer_process(server_ip: str, cmd_queue: multiprocessing.Queue):
@@ -68,6 +110,10 @@ def main():
     # IP 큐 생성
     ip_queue = multiprocessing.Queue()
     active_viewers = {}  # server_ip -> {'proc': Process, 'cmd_q': Queue}
+    
+    # 센서 데이터 로거 초기화
+    global sensor_logger
+    sensor_logger = SensorDataLogger()
 
     try:
         # MQTT 리스너 시작
@@ -85,17 +131,26 @@ def main():
                 logging.info(f"Received data from queue: {data}")
                 
                 if isinstance(data, tuple):
-                    # 녹화 명령 처리
-                    command, _ = data
-                    if active_viewers:  # 서버가 연결되어 있을 때만 명령 전송
-                        for viewer_info in active_viewers.values():
-                            try:
-                                viewer_info['cmd_q'].put(command)
-                                logging.info(f"Sent command '{command}' to viewer")
-                            except Exception as e:
-                                logging.error(f"Failed to send command to viewer: {e}")
+                    # 녹화 명령 또는 센서 데이터 처리
+                    command, payload = data
+                    if command == "sensor_data":
+                        # 센서 데이터 처리
+                        topic, sensor_data = payload
+                        try:
+                            sensor_logger.save_sensor_data(topic, sensor_data)
+                        except Exception as e:
+                            logging.error(f"Failed to save sensor data: {e}")
                     else:
-                        logging.warning("No active viewers to send command to")
+                        # 녹화 명령 처리
+                        if active_viewers:  # 서버가 연결되어 있을 때만 명령 전송
+                            for viewer_info in active_viewers.values():
+                                try:
+                                    viewer_info['cmd_q'].put(command)
+                                    logging.info(f"Sent command '{command}' to viewer")
+                                except Exception as e:
+                                    logging.error(f"Failed to send command to viewer: {e}")
+                        else:
+                            logging.warning("No active viewers to send command to")
                 else:
                     # 새로운 서버 IP 처리
                     server_ip = data

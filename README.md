@@ -15,21 +15,22 @@ MQTT와 TCP 소켓 통신을 결합한 실시간 카메라 스트리밍 시스�
 ```
 /
 ├── server/
-│   ├── main.py             # 서버 메인 프로세스 (MQTT/스트림 관리)
-│   ├── mqtt_manager.py     # 서비스 탐색 기능 (MQTT)
-│   └── stream_server.py    # 영상 스트리밍 기능 (Socket)
+│   ├── main.py                # 서버 메인 프로세스 (MQTT/스트림 관리)
+│   ├── mqtt_manager.py        # 서비스 탐색 기능 (MQTT)
+│   └── stream_server.py       # 영상 스트리밍 기능 (Socket)
 │
 ├── client/
-│   ├── main.py             # 클라이언트 메인 애플리케이션
+│   ├── main.py                # 클라이언트 메인 애플리케이션
 │   └── core/
-│       ├── __init__.py     # 패키지 초기화
-│       ├── mqtt_listener.py # MQTT 통신 및 서버 탐색
-│       ├── stream_viewer.py # 스트림 수신 및 표시
-│       ├── video_recorder.py # 영상 녹화 관리
-│       └── sensor_logger.py # 센서 데이터 로깅
+│       ├── __init__.py        # 패키지 초기화
+│       ├── mqtt_listener.py   # MQTT 통신 및 서버 탐색
+│       ├── stream_viewer.py   # 스트림 수신 및 표시
+│       ├── video_recorder.py  # 영상 녹화 관리
+│       └── sensor_logger.py   # 센서 데이터 로깅
 │
-├── config.py               # 공통 설정 파일
-├── requirements.txt        # 의존성 패키지
+├── config.py                  # 공통 설정 파일
+├── requirements.txt           # 의존성 패키지
+├── run_server.sh              # 서버 실행 프로그렘
 └── README.md               
 ```
 
@@ -213,5 +214,9 @@ LIBCAMERA_VID_COMMAND = 'libcamera-vid --inline --nopreview -t 0 --codec mjpeg -
 
 설치 방법:
 ```bash
+// cam_server 라는 이름의 가상환경이 없다면
+// conda create -n cam_server python=3.12
+
+conda activate cam_server
 pip install -r requirements.txt
 ```

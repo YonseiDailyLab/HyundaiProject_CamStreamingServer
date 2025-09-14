@@ -4,4 +4,5 @@ server/__pycache__/*
 client/__pycache__/*
 client/core/__pycache__/*
 Data/*
+.idea/*
 
